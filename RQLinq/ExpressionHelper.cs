@@ -97,7 +97,7 @@ namespace RQLinq
 
                         queryable = queryable.Provider.CreateQuery<T>(methodCallExpression);
                         continue;
-                    case "con":
+                    case "contains":
                         if (property.Type == typeof(string))
                         {
                             MethodInfo toLowerMethod = typeof(string).GetMethod(nameof(string.ToLower), Type.EmptyTypes);
