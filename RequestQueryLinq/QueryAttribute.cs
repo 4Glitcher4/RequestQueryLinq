@@ -24,7 +24,7 @@ namespace RQLinq
             executedResult.Value = new { count, result };
 
         }
-
+         
         private dynamic ParseFilters(string filter)
         {
             //var regex = new Regex(@"(\w+)\s*(eq|gt|ls|in|con)\s*'([\w.-]+)'");
