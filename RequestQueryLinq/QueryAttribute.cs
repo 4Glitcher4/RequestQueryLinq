@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Reflection;
 using System.Text.RegularExpressions;
 
-namespace RQLinq
+namespace RequestQueryLinq
 {
     public class QueryAttribute<T> : ActionFilterAttribute
     {
@@ -21,45 +21,58 @@ namespace RQLinq
 
             // Заменяем результат запроса отфильтрованным результатом
             var executedResult = context.Result as ObjectResult;
+            var asd = count;
+            var sdf = result as IEnumerable<T>;
             executedResult.Value = new { count, result };
 
         }
-         
+
         private dynamic ParseFilters(string filter)
         {
-            //var regex = new Regex(@"(\w+)\s*(eq|gt|ls|in|con)\s*'([\w.-]+)'");
-            //var regex = new Regex(@"(\w+)\s*(eq|gt|ls|contains|in)\s*(\(.+?\)|'[^']*'|[\w.-]+)");
-            var regex = new Regex(@"([\w.]+)\s*(eq|gt|ls|contains|in)\s*(\(.+?\)|'[^']*'|[\w.-]+)");
-            var matches = regex.Matches(filter);
-
-            var filters = matches.Select(match =>
+            try
             {
-                var field = match.Groups[1].Value;
-                var operatorType = match.Groups[2].Value;
-                var valueString = match.Groups[3].Value.Trim('\'', '(', ')');
+                //var regex = new Regex(@"(\w+)\s*(eq|gt|ls|in|con)\s*'([\w.-]+)'");
+                //var regex = new Regex(@"(\w+)\s*(eq|gt|ls|contains|in)\s*(\(.+?\)|'[^']*'|[\w.-]+)");
+                //var regex = new Regex(@"([\w.]+)\s*(eq|gt|ls|contains|in)\s*(\(.+?\)|'[^']*'|[\w.-]+)");
+                //var regex = new Regex(@"([\w./]+)\s*(eq|gt|ls|contains|in)\s*('[^']*'|\(.+?\)|[\w.-]+)");
+                var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|ls|contains|in)\s*(\([^)]+\)|'[^']*'|[\w.-]+)");
+                var matches = regex.Matches(filter);
 
-                object value;
-                if (operatorType == "in")
+                var filters = matches.Select(match =>
                 {
-                    value = valueString.Split(new[] { "', '" }, StringSplitOptions.RemoveEmptyEntries)
-                                       .Select(v => ConvertToType(field, v))
-                                       .ToArray();
-                }
-                else
-                {
-                    value = ConvertToType(field, valueString);  // Преобразуем значение в соответствующий тип
-                }
+                    var field = match.Groups[1].Value;
+                    var operatorType = match.Groups[2].Value;
+                    var valueString = string.Empty;
 
-                return new FieldFilter
-                {
-                    Field = field,
-                    Operator = operatorType,
-                    Value = value
+                    object value;
+                    if (operatorType == "in")
+                    {
+                        valueString = match.Groups[3].Value.Trim('\'', '(', ')');
+                        value = valueString.Split(new[] { "', '" }, StringSplitOptions.RemoveEmptyEntries)
+                                           .Select(v => ConvertToType(field, v.Trim('\'')))
+                                           .ToArray();
+                    }
+                    else
+                    {
+                        valueString = match.Groups[3].Value.Trim('\'');
+                        value = ConvertToType(field, valueString);  // Преобразуем значение в соответствующий тип
+                    }
 
-                };
-            }).ToList();
+                    return new FieldFilter
+                    {
+                        Field = field,
+                        Operator = operatorType,
+                        Value = value
+                    };
+                }).ToList();
 
-            return filters;
+                return filters;
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
         }
 
         private object ConvertToType(string fieldName, string value)
@@ -74,14 +87,14 @@ namespace RQLinq
                 return Enum.Parse(propertyType, value, true);
             }
 
-            if (propertyType.Namespace == nameof(System))
-            {
-                return Convert.ChangeType(value, propertyType);
-            }
-
             if (propertyType == typeof(Guid))
             {
                 return Guid.Parse(value);
+            }
+
+            if (propertyType.Namespace == nameof(System))
+            {
+                return Convert.ChangeType(value, propertyType);
             }
 
             if (fieldName.Contains("/"))
@@ -107,17 +120,28 @@ namespace RQLinq
         private (IQueryable result, int count) ApplyFilters(OkObjectResult result, List<FieldFilter> filters, string skip, string take, string sort)
         {
             var queryable = result.Value as IQueryable<T>;
-
+            int count = queryable.Count();
             if (queryable != null)
             {
-                var count = queryable.Count();
                 // Применяем сортировку
                 var results = queryable.ApplyFilter(filters)
-                    .ApplySort(sort)
-                    .Skip(skip)
-                    .Take(take);
+                    .ApplySort(sort);
 
-                return (results, count);
+                if (filters.Count > 0)
+                {
+                    count = results.Count();
+                    results = results
+                        .Skip(skip)
+                        .Take(take);
+
+                    return (results, count);
+                }
+                else
+                {
+                    return (results
+                                .Skip(skip)
+                                .Take(take), count);
+                }
             }
             return (queryable, 0);
         }

@@ -1,7 +1,7 @@
 ﻿using System.Linq.Expressions;
 using System.Reflection;
 
-namespace RQLinq
+namespace RequestQueryLinq
 {
     public static class ExpressionHelper
     {
@@ -77,6 +77,15 @@ namespace RQLinq
                     case "eq":
                         comparison = Expression.Equal(property, constant);
                         break;
+                    case "nq":
+                        comparison = Expression.NotEqual(property, constant);
+                        break;
+                    case "and":
+                        comparison = Expression.AndAlso(property, constant);
+                        break;
+                    case "or":
+                        comparison = Expression.Or(property, constant);
+                        break;
                     case "in":
                         ConstantExpression[] values = ((object[])filter.Value).Select(val => Expression.Constant(val, property.Type)).ToArray();
                         NewArrayExpression constantArray = Expression.NewArrayInit(property.Type, values);
@@ -140,7 +149,7 @@ namespace RQLinq
 
         public static IQueryable<T> Skip<T>(this IQueryable<T> queryable, string skip)
         {
-            if (!string.IsNullOrEmpty(skip))
+            if (!string.IsNullOrEmpty(skip) && uint.TryParse(skip, out uint value))
             {
                 return queryable.Provider.CreateQuery<T>(
                 Expression.Call(
@@ -148,7 +157,7 @@ namespace RQLinq
                         nameof(Enumerable.Skip),
                         new[] { typeof(T) },
                         queryable.Expression,
-                        Expression.Constant(int.Parse(skip))));
+                        Expression.Constant((int)value)));
 
             }
 
@@ -157,7 +166,7 @@ namespace RQLinq
 
         public static IQueryable<T> Take<T>(this IQueryable<T> queryable, string take)
         {
-            if (!string.IsNullOrEmpty(take))
+            if (!string.IsNullOrEmpty(take) && uint.TryParse(take, out uint value))
             {
                 return queryable.Provider.CreateQuery<T>(
                 Expression.Call(
@@ -165,7 +174,7 @@ namespace RQLinq
                         nameof(Enumerable.Take),
                         new[] { typeof(T) },
                         queryable.Expression,
-                        Expression.Constant(int.Parse(take))));
+                        Expression.Constant((int)value)));
             }
 
             return queryable;
