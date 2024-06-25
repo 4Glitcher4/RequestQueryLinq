@@ -21,8 +21,6 @@ namespace RequestQueryLinq
 
             // Заменяем результат запроса отфильтрованным результатом
             var executedResult = context.Result as ObjectResult;
-            var asd = count;
-            var sdf = result as IEnumerable<T>;
             executedResult.Value = new { count, result };
 
         }

@@ -128,7 +128,7 @@ namespace RequestQueryLinq
                             queryable = queryable.Provider.CreateQuery<T>(methodCallExpression);
                             continue;
                         }
-                        throw new ArgumentException($"The 'con' operator can only be used with string fields.");
+                        throw new ArgumentException($"The 'contains' operator can only be used with string fields.");
                     default:
                         continue;
                 }
