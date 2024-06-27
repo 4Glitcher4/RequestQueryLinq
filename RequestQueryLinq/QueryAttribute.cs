@@ -33,7 +33,8 @@ namespace RequestQueryLinq
                 //var regex = new Regex(@"(\w+)\s*(eq|gt|ls|contains|in)\s*(\(.+?\)|'[^']*'|[\w.-]+)");
                 //var regex = new Regex(@"([\w.]+)\s*(eq|gt|ls|contains|in)\s*(\(.+?\)|'[^']*'|[\w.-]+)");
                 //var regex = new Regex(@"([\w./]+)\s*(eq|gt|ls|contains|in)\s*('[^']*'|\(.+?\)|[\w.-]+)");
-                var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|ls|contains|in)\s*(\([^)]+\)|'[^']*'|[\w.-]+)");
+                //var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|ls|contains|in)\s*(\([^)]+\)|'[^']*'|[\w.-]+)");
+                var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|gte|lt|lte|contains|ncontains|in|nin)\s*(\([^)]+\)|'[^']*'|[\w.-]+)");
                 var matches = regex.Matches(filter);
 
                 var filters = matches.Select(match =>
@@ -43,17 +44,17 @@ namespace RequestQueryLinq
                     var valueString = string.Empty;
 
                     object value;
-                    if (operatorType == "in")
+                    if (operatorType == "in" || operatorType == "nin")
                     {
                         valueString = match.Groups[3].Value.Trim('\'', '(', ')');
                         value = valueString.Split(new[] { "', '" }, StringSplitOptions.RemoveEmptyEntries)
-                                           .Select(v => ConvertToType(field, v.Trim('\'')))
+                                           .Select(v => PropertyHelper.PropertyTypeConvert<T>(field, v.Trim('\'')))
                                            .ToArray();
                     }
                     else
                     {
                         valueString = match.Groups[3].Value.Trim('\'');
-                        value = ConvertToType(field, valueString);  // Преобразуем значение в соответствующий тип
+                        value = PropertyHelper.PropertyTypeConvert<T>(field, valueString);  // Преобразуем значение в соответствующий тип
                     }
 
                     return new FieldFilter
@@ -71,48 +72,6 @@ namespace RequestQueryLinq
 
                 throw;
             }
-        }
-
-        private object ConvertToType(string fieldName, string value)
-        {
-            var propertyInfo = GetPropertyInfo(typeof(T), fieldName);
-            if (propertyInfo == null) throw new ArgumentException($"Field '{fieldName}' not found on type '{typeof(T).Name}'");
-
-            var propertyType = propertyInfo.PropertyType;
-
-            if (propertyType.IsEnum)
-            {
-                return Enum.Parse(propertyType, value, true);
-            }
-
-            if (propertyType == typeof(Guid))
-            {
-                return Guid.Parse(value);
-            }
-
-            if (propertyType.Namespace == nameof(System))
-            {
-                return Convert.ChangeType(value, propertyType);
-            }
-
-            if (fieldName.Contains("/"))
-            {
-
-            }
-
-            return Convert.ChangeType(value, propertyType);
-        }
-
-        private PropertyInfo GetPropertyInfo(Type type, string propertyPath)
-        {
-            PropertyInfo propertyInfo = null;
-            foreach (var propertyName in propertyPath.Split('.'))
-            {
-                propertyInfo = type.GetProperty(propertyName, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
-                if (propertyInfo == null) return null;
-                type = propertyInfo.PropertyType;
-            }
-            return propertyInfo;
         }
 
         private (IQueryable result, int count) ApplyFilters(OkObjectResult result, List<FieldFilter> filters, string skip, string take, string sort)

@@ -71,8 +71,14 @@ namespace RequestQueryLinq
                     case "gt":
                         comparison = Expression.GreaterThan(property, constant);
                         break;
+                    case "gte":
+                        comparison = Expression.GreaterThanOrEqual(property, constant);
+                        break;
                     case "ls":
                         comparison = Expression.LessThan(property, constant);
+                        break;
+                    case "lse":
+                        comparison = Expression.LessThanOrEqual(property, constant);
                         break;
                     case "eq":
                         comparison = Expression.Equal(property, constant);
@@ -106,6 +112,25 @@ namespace RequestQueryLinq
 
                         queryable = queryable.Provider.CreateQuery<T>(methodCallExpression);
                         continue;
+                    case "nin":
+                        ConstantExpression[] nValues = ((object[])filter.Value).Select(val => Expression.Constant(val, property.Type)).ToArray();
+                        NewArrayExpression nConstantArray = Expression.NewArrayInit(property.Type, nValues);
+                        MethodInfo ninMethod = typeof(Enumerable).GetMethods()
+                            .First(m => m.Name == nameof(Enumerable.Contains) && m.GetParameters().Length == 2)
+                            .MakeGenericMethod(property.Type);
+                        UnaryExpression nContainsMethodCall = Expression.Not(Expression.Call(ninMethod, nConstantArray, property));
+
+                        lambda = Expression.Lambda(nContainsMethodCall, parameter);
+
+                        methodCallExpression = Expression.Call(
+                            typeof(Queryable),
+                            nameof(Enumerable.Where),
+                            new[] { typeof(T) },
+                            queryable.Expression,
+                            lambda);
+
+                        queryable = queryable.Provider.CreateQuery<T>(methodCallExpression);
+                        continue;
                     case "contains":
                         if (property.Type == typeof(string))
                         {
@@ -129,6 +154,29 @@ namespace RequestQueryLinq
                             continue;
                         }
                         throw new ArgumentException($"The 'contains' operator can only be used with string fields.");
+                    case "ncontains":
+                        if (property.Type == typeof(string))
+                        {
+                            MethodInfo nToLowerMethod = typeof(string).GetMethod(nameof(string.ToLower), Type.EmptyTypes);
+                            MethodCallExpression nPropertyToLower = Expression.Call(property, nToLowerMethod);
+                            MethodCallExpression nConstantToLower = Expression.Call(constant, nToLowerMethod);
+
+                            MethodInfo nContainsMethod = typeof(string).GetMethod(nameof(string.Contains), new[] { typeof(string) });
+                            UnaryExpression nContainsMethodExp = Expression.Not(Expression.Call(nPropertyToLower, nContainsMethod, nConstantToLower));
+
+                            lambda = Expression.Lambda(nContainsMethodExp, parameter);
+
+                            methodCallExpression = Expression.Call(
+                                typeof(Queryable),
+                                nameof(Enumerable.Where),
+                                new[] { typeof(T) },
+                                queryable.Expression,
+                                lambda);
+
+                            queryable = queryable.Provider.CreateQuery<T>(methodCallExpression);
+                            continue;
+                        }
+                        throw new ArgumentException($"The 'ncontains' operator can only be used with string fields.");
                     default:
                         continue;
                 }
