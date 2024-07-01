@@ -31,9 +31,49 @@ namespace RequestQueryLinq
                 return Convert.ChangeType(value, propertyType);
             }
 
-            if (fieldName.Contains("/"))
-            {
+            return Convert.ChangeType(value, propertyType);
+        }
 
+        public static object PropertyTypeConvert(Type type, string fieldName, string value)
+        {
+            var propertyInfo = GetPropertyInfo(type, fieldName);
+            if (propertyInfo == null) throw new ArgumentException($"Field '{fieldName}' not found on type '{type.Name}'");
+
+            var propertyType = propertyInfo.PropertyType;
+
+            if (propertyType.IsEnum)
+            {
+                return Enum.Parse(propertyType, value, true);
+            }
+
+            if (propertyType == typeof(Guid))
+            {
+                return Guid.Parse(value);
+            }
+
+            if (propertyType.Namespace == nameof(System))
+            {
+                return Convert.ChangeType(value, propertyType);
+            }
+
+            return Convert.ChangeType(value, propertyType);
+        }
+
+        public static object PropertyTypeConvert(Type propertyType, string value)
+        {
+            if (propertyType.IsEnum)
+            {
+                return Enum.Parse(propertyType, value, true);
+            }
+
+            if (propertyType == typeof(Guid))
+            {
+                return Guid.Parse(value);
+            }
+
+            if (propertyType.Namespace == nameof(System))
+            {
+                return Convert.ChangeType(value, propertyType);
             }
 
             return Convert.ChangeType(value, propertyType);

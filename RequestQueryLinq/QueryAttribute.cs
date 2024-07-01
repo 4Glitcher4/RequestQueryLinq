@@ -33,8 +33,9 @@ namespace RequestQueryLinq
                 //var regex = new Regex(@"(\w+)\s*(eq|gt|ls|contains|in)\s*(\(.+?\)|'[^']*'|[\w.-]+)");
                 //var regex = new Regex(@"([\w.]+)\s*(eq|gt|ls|contains|in)\s*(\(.+?\)|'[^']*'|[\w.-]+)");
                 //var regex = new Regex(@"([\w./]+)\s*(eq|gt|ls|contains|in)\s*('[^']*'|\(.+?\)|[\w.-]+)");
-                //var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|ls|contains|in)\s*(\([^)]+\)|'[^']*'|[\w.-]+)");
-                var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|gte|lt|lte|contains|ncontains|in|nin)\s*(\([^)]+\)|'[^']*'|[\w.-]+)");
+                //var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|ls|contains|in|any)\s*(\([^)]+\)|'[^']*'|[\w.-]+)");
+                //var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|ls|contains|in|any)\s*(\(.+?\)|'[^']*'|[\w.-]+)");
+                var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|gte|lt|lte|contains|ncontains|in|nin|.any)\s*(\([^)]+\)|'[^']*'|[\w.-]+)");
                 var matches = regex.Matches(filter);
 
                 var filters = matches.Select(match =>
@@ -51,10 +52,72 @@ namespace RequestQueryLinq
                                            .Select(v => PropertyHelper.PropertyTypeConvert<T>(field, v.Trim('\'')))
                                            .ToArray();
                     }
+                    else if (operatorType == ".any")
+                    {
+                        valueString = match.Groups[3].Value;
+                        var propertyType = PropertyHelper.GetPropertyInfo(typeof(T), field).PropertyType.GetGenericArguments()[0];
+                        value = ParseFilters(propertyType, valueString);
+                    }
                     else
                     {
                         valueString = match.Groups[3].Value.Trim('\'');
                         value = PropertyHelper.PropertyTypeConvert<T>(field, valueString);  // Преобразуем значение в соответствующий тип
+                    }
+
+                    return new FieldFilter
+                    {
+                        Field = field,
+                        Operator = operatorType,
+                        Value = value
+                    };
+                }).ToList();
+
+                return filters;
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+
+        private dynamic ParseFilters(Type type, string filter)
+        {
+            try
+            {
+                //var regex = new Regex(@"(\w+)\s*(eq|gt|ls|in|con)\s*'([\w.-]+)'");
+                //var regex = new Regex(@"(\w+)\s*(eq|gt|ls|contains|in)\s*(\(.+?\)|'[^']*'|[\w.-]+)");
+                //var regex = new Regex(@"([\w.]+)\s*(eq|gt|ls|contains|in)\s*(\(.+?\)|'[^']*'|[\w.-]+)");
+                //var regex = new Regex(@"([\w./]+)\s*(eq|gt|ls|contains|in)\s*('[^']*'|\(.+?\)|[\w.-]+)");
+                //var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|ls|contains|in|any)\s*(\([^)]+\)|'[^']*'|[\w.-]+)");
+                //var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|ls|contains|in|any)\s*(\(.+?\)|'[^']*'|[\w.-]+)");
+                var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|gte|lt|lte|contains|ncontains|in|nin|.any)\s*(\([^)]+\)|'[^']*'|[\w.-]+)");
+                var matches = regex.Matches(filter);
+
+                var filters = matches.Select(match =>
+                {
+                    var field = match.Groups[1].Value;
+                    var operatorType = match.Groups[2].Value;
+                    var valueString = string.Empty;
+
+                    object value;
+                    if (operatorType == "in" || operatorType == "nin")
+                    {
+                        valueString = match.Groups[3].Value.Trim('\'', '(', ')');
+                        value = valueString.Split(new[] { "', '" }, StringSplitOptions.RemoveEmptyEntries)
+                                           .Select(v => PropertyHelper.PropertyTypeConvert(type, field.Split(".")[1], v.Trim('\'')))
+                                           .ToArray();
+                    }
+                    else if (operatorType == ".any")
+                    {
+                        valueString = match.Groups[3].Value.Trim('(', ')');
+                        var propertyType = PropertyHelper.GetPropertyInfo(type, field.Split(".")[1]).PropertyType.GetGenericArguments()[0];
+                        value = ParseFilters(propertyType, valueString);
+                    }
+                    else
+                    {
+                        valueString = match.Groups[3].Value.Trim('\'');
+                        value = PropertyHelper.PropertyTypeConvert(type, field.Split(".")[1], valueString);  // Преобразуем значение в соответствующий тип
                     }
 
                     return new FieldFilter
