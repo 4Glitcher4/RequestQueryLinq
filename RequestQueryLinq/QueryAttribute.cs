@@ -35,7 +35,7 @@ namespace RequestQueryLinq
                 //var regex = new Regex(@"([\w./]+)\s*(eq|gt|ls|contains|in)\s*('[^']*'|\(.+?\)|[\w.-]+)");
                 //var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|ls|contains|in|any)\s*(\([^)]+\)|'[^']*'|[\w.-]+)");
                 //var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|ls|contains|in|any)\s*(\(.+?\)|'[^']*'|[\w.-]+)");
-                var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|gte|lt|lte|contains|ncontains|in|nin|.any)\s*(\([^)]+\)|'[^']*'|[\w.-]+)");
+                var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|gte|ls|lse|contains|ncontains|in|nin|.any)\s*(\([^)]+\)|'[^']*'|[\w.-]+)");
                 var matches = regex.Matches(filter);
 
                 var filters = matches.Select(match =>
