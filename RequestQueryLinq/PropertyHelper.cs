@@ -21,7 +21,7 @@ namespace RequestQueryLinq
                 return Enum.Parse(propertyType, value, true);
             }
 
-            if (propertyType == typeof(Guid))
+            if (propertyType == typeof(Guid) || propertyType == typeof(Nullable<Guid>))
             {
                 return Guid.Parse(value);
             }
@@ -66,7 +66,7 @@ namespace RequestQueryLinq
                 return Enum.Parse(propertyType, value, true);
             }
 
-            if (propertyType == typeof(Guid))
+            if (propertyType == typeof(Guid) || propertyType == typeof(Nullable<Guid>))
             {
                 return Guid.Parse(value);
             }
