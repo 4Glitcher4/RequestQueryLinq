@@ -67,7 +67,7 @@ namespace RequestQueryLinq
                     return new FieldFilter
                     {
                         Field = field,
-                        Operator = operatorType.Trim(),
+                        Operator = operatorType,
                         Value = value
                     };
                 }).ToList();
@@ -123,7 +123,7 @@ namespace RequestQueryLinq
                     return new FieldFilter
                     {
                         Field = field,
-                        Operator = operatorType,
+                        Operator = operatorType.Trim(),
                         Value = value
                     };
                 }).ToList();
