@@ -35,7 +35,9 @@ namespace RequestQueryLinq
                 //var regex = new Regex(@"([\w./]+)\s*(eq|gt|ls|contains|in)\s*('[^']*'|\(.+?\)|[\w.-]+)");
                 //var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|ls|contains|in|any)\s*(\([^)]+\)|'[^']*'|[\w.-]+)");
                 //var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|ls|contains|in|any)\s*(\(.+?\)|'[^']*'|[\w.-]+)");
-                var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|gte|ls|lse|contains|ncontains|in|nin|.any)\s*(\([^)]+\)|'[^']*'|[\w.-]+)");
+                //var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|gte|ls|lse|contains|ncontains|in|nin|.any)\s*(\([^)]+\)|'[^']*'|[\w.-]+)");
+                //var regex = new Regex(@"([\w./]+)\s*(eq|nq|and|or|gt|gte|lt|lte|contains|ncontains|in|nin|any)\s*(\([^)]+\)|'[^']*'|[\w.-]+)");
+                var regex = new Regex(@"([\w./]+)\s*(eq|nq|gt|gte|lt|lte|contains|ncontains|in|nin|.any)\s*(\([^)]+\)|'[^']*'|[\w.-]+)|\s*(and|or)\s*");
                 var matches = regex.Matches(filter);
 
                 var filters = matches.Select(match =>
@@ -43,6 +45,7 @@ namespace RequestQueryLinq
                     var field = match.Groups[1].Value;
                     var operatorType = match.Groups[2].Value;
                     var valueString = string.Empty;
+                    var orAndValue = match.Groups[0].Value.Trim(' ');
 
                     object value;
                     if (operatorType == "in" || operatorType == "nin")
@@ -57,6 +60,12 @@ namespace RequestQueryLinq
                         valueString = match.Groups[3].Value;
                         var propertyType = PropertyHelper.GetPropertyInfo(typeof(T), field).PropertyType.GetGenericArguments()[0];
                         value = ParseFilters(propertyType, valueString);
+                    }
+                    else if (orAndValue == "or" || orAndValue == "and")
+                    {
+                        field = string.Empty;
+                        operatorType = orAndValue;
+                        value = null;
                     }
                     else
                     {

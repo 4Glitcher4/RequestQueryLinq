@@ -53,45 +53,128 @@ namespace RequestQueryLinq
 
         public static IQueryable<T> ApplyFilter<T>(this IQueryable<T> queryable, List<FieldFilter> filters)
         {
+            ParameterExpression parameter = Expression.Parameter(typeof(T), "x");
+            Expression comparison = null;
+            Expression previousComparison = null;
+            FieldFilter prevFilter = null;
             foreach (var filter in filters)
             {
                 var field = filter.Field;
                 var value = filter.Value;
-
                 // Создаем выражение для фильтрации
-                ParameterExpression parameter = Expression.Parameter(typeof(T), "x");
-                Expression property = GetPropertyExpression(parameter, field);
-                ConstantExpression constant = Expression.Constant(value, value.GetType());
-                BinaryExpression comparison;
+                Expression property = null;
+                ConstantExpression constant = null;
+                if (filter.Operator == "or" || filter.Operator == "and")
+                {
+
+                }
+                else
+                {
+                    property = GetPropertyExpression(parameter, field);
+                    constant = Expression.Constant(value, value.GetType());
+                }
+
                 LambdaExpression lambda;
                 MethodCallExpression methodCallExpression;
 
                 switch (filter.Operator)
                 {
                     case "gt":
-                        comparison = Expression.GreaterThan(property, constant);
+                        if (previousComparison == null)
+                        {
+                            comparison = Expression.GreaterThan(property, constant);
+                            previousComparison = comparison;
+                            prevFilter = filter;
+                        }
+                        else
+                        {
+                            if (prevFilter?.Operator == "and")
+                                previousComparison = Expression.AndAlso(previousComparison, Expression.GreaterThan(property, constant));
+                            if (prevFilter?.Operator == "or")
+                                previousComparison = Expression.OrElse(previousComparison, Expression.GreaterThan(property, constant));
+                        }
                         break;
                     case "gte":
-                        comparison = Expression.GreaterThanOrEqual(property, constant);
+                        if (previousComparison == null)
+                        {
+                            comparison = Expression.GreaterThanOrEqual(property, constant);
+                            previousComparison = comparison;
+                            prevFilter = filter;
+                        }
+                        else
+                        {
+                            if (prevFilter?.Operator == "and")
+                                previousComparison = Expression.AndAlso(previousComparison, Expression.GreaterThanOrEqual(property, constant));
+                            if (prevFilter?.Operator == "or")
+                                previousComparison = Expression.OrElse(previousComparison, Expression.GreaterThanOrEqual(property, constant));
+                        }
                         break;
                     case "lt":
-                        comparison = Expression.LessThan(property, constant);
+                        if (previousComparison == null)
+                        {
+                            comparison = Expression.LessThan(property, constant);
+                            previousComparison = comparison;
+                            prevFilter = filter;
+                        }
+                        else
+                        {
+                            if (prevFilter?.Operator == "and")
+                                previousComparison = Expression.AndAlso(previousComparison, Expression.LessThan(property, constant));
+                            if (prevFilter?.Operator == "or")
+                                previousComparison = Expression.OrElse(previousComparison, Expression.LessThan(property, constant));
+                        }
                         break;
                     case "lte":
-                        comparison = Expression.LessThanOrEqual(property, constant);
+                        if (previousComparison == null)
+                        {
+                            comparison = Expression.LessThanOrEqual(property, constant);
+                            previousComparison = comparison;
+                            prevFilter = filter;
+                        }
+                        else
+                        {
+                            if (prevFilter?.Operator == "and")
+                                previousComparison = Expression.AndAlso(previousComparison, Expression.LessThanOrEqual(property, constant));
+                            if (prevFilter?.Operator == "or")
+                                previousComparison = Expression.OrElse(previousComparison, Expression.LessThanOrEqual(property, constant));
+                        }
                         break;
                     case "eq":
-                        comparison = Expression.Equal(property, constant);
+                        if (previousComparison == null)
+                        {
+                            comparison = Expression.Equal(property, constant);
+                            previousComparison = comparison;
+                            prevFilter = filter;
+                        }
+                        else
+                        {
+                            if (prevFilter?.Operator == "and")
+                                previousComparison = Expression.AndAlso(previousComparison, Expression.Equal(property, constant));
+                            if (prevFilter?.Operator == "or")
+                                previousComparison = Expression.OrElse(previousComparison, Expression.Equal(property, constant));
+                        }
                         break;
                     case "nq":
-                        comparison = Expression.NotEqual(property, constant);
+                        if (previousComparison == null)
+                        {
+                            comparison = Expression.NotEqual(property, constant);
+                            previousComparison = comparison;
+                            prevFilter = filter;
+                        }
+                        else
+                        {
+                            if (prevFilter?.Operator == "and")
+                                previousComparison = Expression.AndAlso(previousComparison, Expression.NotEqual(property, constant));
+                            if (prevFilter?.Operator == "or")
+                                previousComparison = Expression.OrElse(previousComparison, Expression.NotEqual(property, constant));
+                        }
                         break;
                     case "and":
-                        comparison = Expression.AndAlso(property, constant);
-                        break;
+                        prevFilter = filter;
+                        continue;
                     case "or":
-                        comparison = Expression.Or(property, constant);
-                        break;
+                        prevFilter = filter;
+                        continue;
                     case "in":
                         ConstantExpression[] values = ((object[])filter.Value).Select(val => Expression.Constant(val, property.Type)).ToArray();
                         NewArrayExpression constantArray = Expression.NewArrayInit(property.Type, values);
@@ -110,7 +193,27 @@ namespace RequestQueryLinq
                             queryable.Expression,
                             lambda);
 
-                        queryable = queryable.Provider.CreateQuery<T>(methodCallExpression);
+                        if (previousComparison == null)
+                        {
+                            comparison = containsMethodCall;
+                            previousComparison = comparison;
+                            prevFilter = filter;
+                        }
+                        else
+                        {
+                            if (prevFilter?.Operator == "and")
+                                previousComparison = Expression.AndAlso(previousComparison, containsMethodCall);
+                            if (prevFilter?.Operator == "or")
+                                previousComparison = Expression.OrElse(previousComparison, containsMethodCall);
+                        }
+
+
+                        //previousComparison = containsMethodCall;
+                        //comparison = containsMethodCall;
+
+                        //prevFilter = filter;
+
+                        //queryable = queryable.Provider.CreateQuery<T>(methodCallExpression);
                         continue;
                     case "nin":
                         ConstantExpression[] nValues = ((object[])filter.Value).Select(val => Expression.Constant(val, property.Type)).ToArray();
@@ -129,7 +232,26 @@ namespace RequestQueryLinq
                             queryable.Expression,
                             lambda);
 
-                        queryable = queryable.Provider.CreateQuery<T>(methodCallExpression);
+                        if (previousComparison == null)
+                        {
+                            comparison = nContainsMethodCall;
+                            previousComparison = comparison;
+                            prevFilter = filter;
+                        }
+                        else
+                        {
+                            if (prevFilter?.Operator == "and")
+                                previousComparison = Expression.AndAlso(previousComparison, nContainsMethodCall);
+                            if (prevFilter?.Operator == "or")
+                                previousComparison = Expression.OrElse(previousComparison, nContainsMethodCall);
+                        }
+
+                        //previousComparison = nContainsMethodCall;
+                        //comparison = nContainsMethodCall;
+
+                        //prevFilter = filter;
+
+                        //queryable = queryable.Provider.CreateQuery<T>(methodCallExpression);
                         continue;
                     case "contains":
                         if (property.Type == typeof(string))
@@ -150,7 +272,26 @@ namespace RequestQueryLinq
                                 queryable.Expression,
                                 lambda);
 
-                            queryable = queryable.Provider.CreateQuery<T>(methodCallExpression);
+                            if (previousComparison == null)
+                            {
+                                comparison = containsMethodExp;
+                                previousComparison = comparison;
+                                prevFilter = filter;
+                            }
+                            else
+                            {
+                                if (prevFilter?.Operator == "and")
+                                    previousComparison = Expression.AndAlso(previousComparison, containsMethodExp);
+                                if (prevFilter?.Operator == "or")
+                                    previousComparison = Expression.OrElse(previousComparison, containsMethodExp);
+                            }
+
+                            //previousComparison = containsMethodExp;
+                            //comparison = containsMethodExp;
+
+                            //prevFilter = filter;
+
+                            //queryable = queryable.Provider.CreateQuery<T>(methodCallExpression);
                             continue;
                         }
                         throw new ArgumentException($"The 'contains' operator can only be used with string fields.");
@@ -173,7 +314,26 @@ namespace RequestQueryLinq
                                 queryable.Expression,
                                 lambda);
 
-                            queryable = queryable.Provider.CreateQuery<T>(methodCallExpression);
+                            if (previousComparison == null)
+                            {
+                                comparison = nContainsMethodExp;
+                                previousComparison = comparison;
+                                prevFilter = filter;
+                            }
+                            else
+                            {
+                                if (prevFilter?.Operator == "and")
+                                    previousComparison = Expression.AndAlso(previousComparison, nContainsMethodExp);
+                                if (prevFilter?.Operator == "or")
+                                    previousComparison = Expression.OrElse(previousComparison, nContainsMethodExp);
+                            }
+
+                            //previousComparison = nContainsMethodExp;
+                            //comparison = nContainsMethodExp;
+
+                            //prevFilter = filter;
+
+                            //queryable = queryable.Provider.CreateQuery<T>(methodCallExpression);
                             continue;
                         }
                         throw new ArgumentException($"The 'ncontains' operator can only be used with string fields.");
@@ -196,7 +356,7 @@ namespace RequestQueryLinq
                             Expression.Property(parameter, filter.Field.Split('.')[0]),
                             Expression.Lambda(nestedPredicate, nestedParameter));
 
-                        lambda = Expression.Lambda(anyPredicate, parameter);
+                        lambda = Expression.Lambda(comparison ?? anyPredicate, parameter);
 
                         methodCallExpression = Expression.Call(
                             typeof(Queryable),
@@ -205,24 +365,39 @@ namespace RequestQueryLinq
                             queryable.Expression,
                             lambda);
 
-                        queryable = queryable.Provider.CreateQuery<T>(methodCallExpression);
+                        if (previousComparison == null)
+                        {
+                            comparison = anyPredicate;
+                            previousComparison = comparison;
+                            prevFilter = filter;
+                        }
+                        else
+                        {
+                            if (prevFilter?.Operator == "and")
+                                previousComparison = Expression.AndAlso(previousComparison, anyPredicate);
+                            if (prevFilter?.Operator == "or")
+                                previousComparison = Expression.OrElse(previousComparison, anyPredicate);
+                        }
+
+                        //queryable = queryable.Provider.CreateQuery<T>(methodCallExpression);
                         continue;
                     default:
                         continue;
                 }
 
-                lambda = Expression.Lambda(comparison, parameter);
-                methodCallExpression = Expression.Call(
-                    typeof(Queryable),
-                    nameof(Enumerable.Where),
-                    new[] { typeof(T) },
-                    queryable.Expression,
-                    lambda);
-
-                queryable = queryable.Provider.CreateQuery<T>(methodCallExpression);
+                //if (prevFilter?.Operator == "and")
+                //    comparison = Expression.AndAlso(previousComparison, comparison);
+                //if (prevFilter?.Operator == "or")
+                //    comparison = Expression.OrElse(previousComparison, comparison);
             }
+            var lambd = Expression.Lambda(previousComparison, parameter);
 
-            return queryable;
+            return queryable.Provider.CreateQuery<T>(Expression.Call(
+                typeof(Queryable),
+                nameof(Enumerable.Where),
+                new[] { typeof(T) },
+                queryable.Expression,
+                lambd));
         }
 
         public static IQueryable<T> Skip<T>(this IQueryable<T> queryable, string skip)
@@ -261,34 +436,41 @@ namespace RequestQueryLinq
         private static Expression BuildExpression(ParameterExpression parameter, FieldFilter filter)
         {
             var property = GetNestedPropertyExpression(parameter, filter.Field);
-            var constant = Expression.Constant(filter.Value, filter.Value.GetType());
+            var constant = (filter.Operator == "or" || filter.Operator == "and") ? null : Expression.Constant(filter.Value, filter.Value.GetType());
             Expression comparison = null;
+            Expression previousComparison = null;
 
             switch (filter.Operator)
             {
                 case "gt":
                     comparison = Expression.GreaterThan(property, constant);
+                    previousComparison = comparison;
                     break;
                 case "gte":
                     comparison = Expression.GreaterThanOrEqual(property, constant);
+                    previousComparison = comparison;
                     break;
                 case "lt":
                     comparison = Expression.LessThan(property, constant);
+                    previousComparison = comparison;
                     break;
                 case "lte":
                     comparison = Expression.LessThanOrEqual(property, constant);
+                    previousComparison = comparison;
                     break;
                 case "eq":
                     comparison = Expression.Equal(property, constant);
+                    previousComparison = comparison;
                     break;
                 case "nq":
                     comparison = Expression.NotEqual(property, constant);
+                    previousComparison = comparison;
                     break;
                 case "and":
-                    comparison = Expression.AndAlso(property, constant);
+                    comparison = Expression.AndAlso(comparison, previousComparison);
                     break;
                 case "or":
-                    comparison = Expression.Or(property, constant);
+                    comparison = Expression.OrElse(comparison, previousComparison);
                     break;
                 case "contains":
                     if (property.Type == typeof(string))
@@ -301,6 +483,7 @@ namespace RequestQueryLinq
                         MethodCallExpression containsMethodExp = Expression.Call(propertyToLower, containsMethod, constantToLower);
 
                         comparison = containsMethodExp;
+                        previousComparison = comparison;
                         break;
                     }
                     throw new ArgumentException($"The 'contains' operator can only be used with string fields.");
@@ -315,6 +498,7 @@ namespace RequestQueryLinq
                         UnaryExpression nContainsMethodExp = Expression.Not(Expression.Call(nPropertyToLower, nContainsMethod, nConstantToLower));
 
                         comparison = nContainsMethodExp;
+                        previousComparison = comparison;
                         break;
                     }
                     throw new ArgumentException($"The 'contains' operator can only be used with string fields.");
@@ -327,6 +511,7 @@ namespace RequestQueryLinq
 
                     MethodCallExpression containsMethodCall = Expression.Call(inMethod, constantArray, property);
                     comparison = containsMethodCall;
+                    previousComparison = comparison;
                     break;
                 case "nin":
                     ConstantExpression[] nValues = ((object[])filter.Value).Select(val => Expression.Constant(val, property.Type)).ToArray();
@@ -337,6 +522,7 @@ namespace RequestQueryLinq
 
                     UnaryExpression nContainsMethodCall = Expression.Not(Expression.Call(ninMethod, nConstantArray, property));
                     comparison = nContainsMethodCall;
+                    previousComparison = comparison;
                     break;
             }
 
